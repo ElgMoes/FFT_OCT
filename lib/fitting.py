@@ -5,10 +5,6 @@ import tqdm
 from scipy.fftpack import fft
 import scipy.stats as stats
 
-useMP = False
-if useMP:
-    import multiprocessing as mp
-
 import lib.fitting_routines as fr
 
 def FFT_peakFit(fdata, method, peak_index = None): 
@@ -143,12 +139,15 @@ def singlenoisyFit(data, rms = 0.1, Nrepeat = 1000, method = "JacobsenMod"):
     
     return kk
 
-def noisyFit(data, rms = 0.1, Nrepeat = 1000, method = "JacobsenMod", nProc=None):
+def noisyFit(data, rms = 0.1, Nrepeat = 1000, method = "JacobsenMod", nProc=None, useMP=False):
     """ generate and fit noisy data
     this is a wrapper that calls singleNoisyFit and allows to fit several
     rms and methods on the same data set.
     if possible and selected, it will parallelise the work load.
     """
+
+    if useMP:
+        import multiprocessing as mp
     
     Nd = 1; Nr = 1; Nm = 1;
     

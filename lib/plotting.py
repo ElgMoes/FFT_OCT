@@ -1,11 +1,27 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import itertools as it
-import os
+from scipy.optimize import curve_fit
 
 import lib.fitting_routines as fr
 import lib.helper_functions as helper
-import lib.noise_types as noise
+
+def noiseBehaviour(rms, noise, noiseSamples=1000, unc=None):
+    """ noiseBehaviour(rms, noise, noiseSamples=1000)
+    essentially, a linear fit to rms vs noise
+    returns the value from rms = 1, which is also the slope
+    """
+    
+    def lin(x, k):
+        return k*x
+    
+    if unc is None:
+        # if uncertainty is not given, try to estimate from sample size
+        unc = noise/np.sqrt(noiseSamples*(noiseSamples-1))
+    
+    k, kv = curve_fit(lin, rms, noise, p0=noise[-1]/rms[-1], sigma=unc)
+       
+    return k[0], np.sqrt(kv[0,0])
 
 def makeComparisonPlot(fvals, data, methods, title = None):
     """Make a comparison plot of different estimators
@@ -235,9 +251,9 @@ def makeNoisePlot(fvals, dataMean, dataStd, param, noiseSamples, rind = None, da
         rms = param[1]
         
         ax.plot(rms, mk, 'b-o', label='bias')
-        k, kerr = noise.noiseBehaviour(rms, ms, noiseSamples)
+        k, kerr = noiseBehaviour(rms, ms, noiseSamples)
         print(fr'{method}: $\kappa$ mean = {k:.3e} ± {kerr:.3e}')
-        k, kerr = noise.noiseBehaviour(rms, xs, noiseSamples)
+        k, kerr = noiseBehaviour(rms, xs, noiseSamples)
         print(fr'{method}: rms $\kappa$ max = {k:.3e} ± {kerr:.3e}')
         ax.plot(rms, xs, 'b:*', label=fr'max std ($\kappa$ = {k:.3f})')
         
@@ -392,12 +408,8 @@ def makeKappaPlot(fC, fDelta, stdData, param):
         
     return f, a, p, cM
 
-def saveFigure(fig, filename):
+def saveFigure(fig, filename, directory):
     #directory = f'simResults_{NdataPoints}_{centralFrequency:.1f}_{noiseSamples:d}'
-    directory = 'presentation'
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
     if directory is None:
         d = ''
     else:

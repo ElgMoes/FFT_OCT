@@ -11,16 +11,16 @@ def generateData(N = 700, f = 9, phase = 0):
   
     if hasattr(f, "__len__"):   # probably a list or matrix
         for fval in f:
-            d, p = generateData(N, fval, phase)
-            data.append(d)
-            param.append(p)
+            dataPoint, paramPoint = generateData(N, fval, phase)
+            data.append(dataPoint)
+            param.append(paramPoint)
         return data, param
       
     if hasattr(phase, "__len__"):
          for phaseval in phase:
-             d, p = generateData(N, f, phaseval)
-             data.append(d)
-             param.append(p)
+             dataPoint, paramPoint = generateData(N, f, phaseval)
+             data.append(dataPoint)
+             param.append(paramPoint)
          return data, param
      
     # if non of the above, calculate single-parameter sine
