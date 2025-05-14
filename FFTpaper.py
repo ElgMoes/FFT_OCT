@@ -646,10 +646,10 @@ def makeNoisePlot(fvals, dataMean, dataStd, param, rind = None, dataC = None):
         
         ax.plot(rms, mk, 'b-o', label='bias')
         k, kerr = noiseBehaviour(rms, ms)
-        print(f'{method}: $\kappa$ mean = {k:.3e} ± {kerr:.3e}')
+        print(fr'{method}: $\kappa$ mean = {k:.3e} ± {kerr:.3e}')
         k, kerr = noiseBehaviour(rms, xs)
-        print(f'{method}: rms $\kappa$ max = {k:.3e} ± {kerr:.3e}')
-        ax.plot(rms, xs, 'b:*', label=f'max std ($\kappa$ = {k:.3f})')
+        print(fr'{method}: rms $\kappa$ max = {k:.3e} ± {kerr:.3e}')
+        ax.plot(rms, xs, 'b:*', label=fr'max std ($\kappa$ = {k:.3f})')
         
         ax.set_xlabel('rms noise')
         ax.set_ylabel('maximum bias/standard deviation')
@@ -784,10 +784,10 @@ def makeKappaPlot(fC, fDelta, stdData, param):
             
     merr = np.array([mk-kappa.min(axis=1), kappa.max(axis=1)-mk])
     
-    ax.errorbar(fC, mk, yerr=merr, fmt='b-o', label='$\kappa_\mathrm{mean}$')
+    ax.errorbar(fC, mk, yerr=merr, fmt='b-o', label=r'$\kappa_\mathrm{mean}$')
    
-    ax.set_xlabel('centre frequency ($\Delta f$)')
-    ax.set_ylabel('$\kappa_\mathrm{mean}$')
+    ax.set_xlabel(r'centre frequency ($\Delta f$)')
+    ax.set_ylabel(r'$\kappa_\mathrm{mean}$')
     #ax.legend()
     ax.set_title(method)
     
@@ -833,8 +833,8 @@ saveFigures = True
 directory = None
 
 # be aware calculation of noise properties can take significant time!
-generateNoise = True
-noiseAnalysis = True
+generateNoise = False
+noiseAnalysis = False
 
 
 # be aware calculation of kappa can take significant time!
