@@ -24,7 +24,7 @@ def generateData(N = 700, f = 9, phase = 0):
          return data, param
      
     # if non of the above, calculate single-parameter sine
-    data = np.sin(2*np.pi*f/N*np.arange(1, N+1) + phase)   
+    data = np.sin(2*np.pi*f/N*np.arange(1, N+1) + phase)
     # to maintain compatibility with the original matlab test code
            
     return data, (f, phase)

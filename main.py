@@ -46,7 +46,7 @@ noiseSamples = 10
 fRange = helper.inclusiveRange(centralFrequency-0.6,centralFrequency+0.6,N=1001)
 noiseRange = helper.inclusiveRange(0.02, 0.5, 0.02)
 
-useMP = True
+useMP = False
 
 #%%
 plotter.plotDFT_FFT(centralFrequency, NdataPoints, directory, saveFigures)
