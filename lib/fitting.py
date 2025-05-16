@@ -30,6 +30,7 @@ def FFT_peakFit(fdata, method, peak_index = None):
     if peak_index is None: # in case we want to override for testing
         peak_index = np.argmax(np.abs(fdata))
     
+    print(peak_index)
     assert((peak_index>2) and (peak_index < len(fdata)-3)), f'maximum position {peak_index} too close to start or end of data.'
     
     y1, y2, y3 = fdata[peak_index-1:peak_index+2]

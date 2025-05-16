@@ -14,6 +14,7 @@ example script for arXiv
 import numpy as np
 from scipy.fftpack import fft
 import os
+import matplotlib.pyplot as plt
 
 
 import lib.generate as gen
@@ -53,8 +54,8 @@ plotter.plotDFT_FFT(centralFrequency, NdataPoints, directory, saveFigures)
 
 "compare methods"
 # Generate data
-data, param = gen.generateData(N=NdataPoints, f = fRange)
-fdata = fft(data)
+data, param = gen.poissonData(N=NdataPoints, f = fRange)
+fdata = fft(data-np.mean(data, axis=1, keepdims=True))
 
 plotter.comparisonGaussian(data, fdata, fRange, directory, saveFigures)
 
@@ -72,7 +73,7 @@ plotter.compareMethods(fdata, fRange, methods, saveFigures, "QuinnJacobsen", dir
 #%%
 if noiseAnalysis:
     # test (some) methods for noise
-    data, param = gen.generateData(N=NdataPoints, f = fRange)
+    data, param = gen.poissonData(N=NdataPoints, f = fRange)
     
     rmsvals = np.arange(0.05, 1.2, 0.05);
     methods = ['Quadratic', 'MacLeod', 'Quinns2nd', 'Jacobsen', 'JacobsenMod']

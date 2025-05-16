@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.fftpack import fft
 
 import lib.helper_functions as helper
 import lib.generate as gen
@@ -9,7 +10,7 @@ def genPhotons(sine_wave):
     intensity = sine_wave**2
 
     # 4. Normalize and scale to photon rate (e.g., mean photons per time bin)
-    max_photon_rate = 50  # max photons per time bin
+    max_photon_rate = 2  # max photons per time bin
     expected_photon_counts = intensity / np.max(intensity) * max_photon_rate
 
     # 5. Simulate Poisson-distributed photon counts
@@ -28,14 +29,21 @@ fRange = helper.inclusiveRange(centralFrequency-0.6,centralFrequency+0.6,N=1001)
 olddata, param = gen.generateData(N=NdataPoints, f = fRange)
 
 # Let's plot 5 evenly spaced samples out of the 1001 frequencies
-sample_indices = [0]
+sample_indices = [0]#, 250, 500, 750, 1000]
 
 plt.figure(figsize=(12, 6))
 
 data = []
+fdata = []
 for i, sample in enumerate(sample_indices):
-    data.append(genPhotons(olddata[sample]))
-    plt.plot(data[i], label=f'f = {param[sample][0]:.2f}')
+    dataPoints = (genPhotons(olddata[sample]))
+    data.append(dataPoints)
+    fdata.append(fft(dataPoints-np.mean(dataPoints)))
+    #fdata = fft(olddata)
+    plt.plot(fdata[i], label=f'f = {param[sample][0]:.2f}')
+
+peak_index = np.argmax(np.abs(fdata))
+print(peak_index)
 
 plt.title('Sample Integer-Valued Sine Waves')
 plt.xlabel('Sample Index')
