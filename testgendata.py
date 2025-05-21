@@ -5,19 +5,19 @@ from scipy.fftpack import fft
 import lib.helper_functions as helper
 import lib.generate as gen
 
+offset = 5
+modulation = 1
+print(f"SNR = {np.sqrt(modulation)}")
+
 def genPhotons(sine_wave):
-    # 3. Convert to intensity (e.g., power)
-    intensity = sine_wave**2
+    expected_photon_counts = sine_wave * modulation
 
-    # 4. Normalize and scale to photon rate (e.g., mean photons per time bin)
-    max_photon_rate = 2  # max photons per time bin
-    expected_photon_counts = intensity / np.max(intensity) * max_photon_rate
-
-    # 5. Simulate Poisson-distributed photon counts
-    photon_counts = np.random.poisson(expected_photon_counts)
+    photon_counts = np.random.poisson(expected_photon_counts + offset)
+    #gaussian_noise = np.random.normal(expected_photon_counts + offset, modulation/2)
+    #photon_counts_gauss = gaussian_noise
     photon_noise = photon_counts - expected_photon_counts
 
-    return photon_counts
+    return photon_counts#, photon_counts_gauss
 
 #NdataPoints = 700 # roughly number of pixels in raw wavelength-spectrum 
 NdataPoints = 2048 # resampled signal in k-space
@@ -34,13 +34,16 @@ sample_indices = [0]#, 250, 500, 750, 1000]
 plt.figure(figsize=(12, 6))
 
 data = []
+gauss_data = []
 fdata = []
 for i, sample in enumerate(sample_indices):
-    dataPoints = (genPhotons(olddata[sample]))
+    dataPoints, gaussPoints = genPhotons(olddata[sample])
     data.append(dataPoints)
+    gauss_data.append(gaussPoints)
     fdata.append(fft(dataPoints-np.mean(dataPoints)))
     #fdata = fft(olddata)
-    plt.plot(fdata[i], label=f'f = {param[sample][0]:.2f}')
+    plt.plot(data[i], label=f'f poisson = {param[sample][0]:.2f}')
+    plt.plot(gauss_data[i], label=f'f gauss = {param[sample][0]:.2f}')
 
 peak_index = np.argmax(np.abs(fdata))
 print(peak_index)
@@ -51,4 +54,5 @@ plt.ylabel('Amplitude (Integer)')
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
+plt.savefig(f"gauss_poisson/noise_{offset}_{modulation}.png")
 plt.show()

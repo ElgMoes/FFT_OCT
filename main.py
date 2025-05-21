@@ -24,24 +24,26 @@ import plotter
 import analysis
 
 
-#%% start script / figure generation 
+#%% start script / figure generation
+
+poisson_offset = 500
+poisson_modulation = 50
+
 saveFigures = True
 directory = 'presentation'
 if not os.path.exists(directory):
     os.makedirs(directory)
 
 # be aware calculation of noise properties can take significant time!
-generateNoise = True
-noiseAnalysis = True
+generateNoise = False
+noiseAnalysis = False
 
 # be aware calculation of kappa can take significant time!
 generateKappaData = False
 kappaAnalysis = False
 
-#NdataPoints = 700 # roughly number of pixels in raw wavelength-spectrum 
 NdataPoints = 2048 # resampled signal in k-space
 centralFrequency = 7    # based on Pegah et al. (5 µm beads)
-#centralFrequency = 50  # check for different frequency
 noiseSamples = 10
     
 fRange = helper.inclusiveRange(centralFrequency-0.6,centralFrequency+0.6,N=1001)
@@ -54,7 +56,7 @@ plotter.plotDFT_FFT(centralFrequency, NdataPoints, directory, saveFigures)
 
 "compare methods"
 # Generate data
-data, param = gen.poissonData(N=NdataPoints, f = fRange)
+data, param = gen.poissonData(N=NdataPoints, f = fRange, offset=poisson_offset, modulation=poisson_modulation)
 fdata = fft(data-np.mean(data, axis=1, keepdims=True))
 
 plotter.comparisonGaussian(data, fdata, fRange, directory, saveFigures)
@@ -63,10 +65,10 @@ plotter.comparisonGaussian(data, fdata, fRange, directory, saveFigures)
 methods = ["Quadratic", "Barycentric", "Gaussian"]
 plotter.compareMethods(fdata, fRange, methods, saveFigures, "stdFits", directory)
 
-methods = ["Jains", "MacLeod"] # , "Candan"]
+methods = ["MacLeod"] # , "Candan", "Jains"]
 plotter.compareMethods(fdata, fRange, methods, saveFigures, "Jains_MacLeod", directory)
     
-methods = ["Jacobsen", "JacobsenMod","Quinns2nd"]
+methods = ["Jacobsen", "JacobsenMod"]#,"Quinns2nd"]
 plotter.compareMethods(fdata, fRange, methods, saveFigures, "QuinnJacobsen", directory)
 
 
