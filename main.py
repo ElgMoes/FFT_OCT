@@ -29,24 +29,26 @@ import analysis
 poisson_offset = 500
 poisson_modulation = 50
 
+frequencies = 101
+
 saveFigures = True
 directory = 'presentation'
 if not os.path.exists(directory):
     os.makedirs(directory)
 
 # be aware calculation of noise properties can take significant time!
-generateNoise = False
-noiseAnalysis = False
+noiseAnalysis = True
+generateNoise = True
 
 # be aware calculation of kappa can take significant time!
-generateKappaData = False
 kappaAnalysis = False
+generateKappaData = False
 
 NdataPoints = 2048 # resampled signal in k-space
 centralFrequency = 7    # based on Pegah et al. (5 µm beads)
 noiseSamples = 10
     
-fRange = helper.inclusiveRange(centralFrequency-0.6,centralFrequency+0.6,N=1001)
+fRange = helper.inclusiveRange(centralFrequency-0.6,centralFrequency+0.6,N=frequencies)
 noiseRange = helper.inclusiveRange(0.02, 0.5, 0.02)
 
 useMP = False
@@ -71,17 +73,37 @@ plotter.compareMethods(fdata, fRange, methods, saveFigures, "Jains_MacLeod", dir
 methods = ["Jacobsen", "JacobsenMod"]#,"Quinns2nd"]
 plotter.compareMethods(fdata, fRange, methods, saveFigures, "QuinnJacobsen", directory)
 
-
+agenerateNoise = False
 #%%
 if noiseAnalysis:
-    # test (some) methods for noise #TODO
-    for i in tqdm(range(noiseSamples), desc="Looping over different noise samples"):
-        data, param = gen.poissonData(N=NdataPoints, f = fRange, offset=poisson_offset, modulation=poisson_modulation)
-    
-    rmsvals = np.arange(0.05, 1.2, 0.05);
+    import poisson_analysis as panalyse
     methods = ['Quadratic', 'MacLeod', 'Quinns2nd', 'Jacobsen', 'JacobsenMod']
+    N_methods = len(methods)
 
-    analysis.noiseAnalysis(data, noiseSamples, fRange, rmsvals, methods, generateNoise, directory, saveFigures, useMP)
+    if generateNoise:
+        N_data = 1001
+        for f in tqdm(range(len(fRange))):
+            data[f] = panalyse.singleNoise(N_methods, noiseSamples, NdataPoints, fRange[f], methods, poisson_offset, poisson_modulation)
+
+        # initializing arrays to store statistical values
+        # mean and standard deviation
+        kmean = np.zeros(shape=(N_data, N_methods))
+        kstd = np.zeros(shape=(N_data, N_methods))
+           
+        # Skewness and kurtosis
+        kskewness = np.zeros(shape=(N_data, N_methods))
+        kkurtosis = np.zeros(shape=(N_data, N_methods))
+
+        for method in range(N_methods):
+            for Nd in range(N_data):
+                kmean[Nd, N_methods] = [ data[method][i].mean for i in range(len(data)) ]
+                kstd[Nd, N_methods] = np.sqrt([ data[i].variance for i in range(len(data)) ])
+                kskewness[Nd, N_methods] = [ data[i].skewness for i in range(len(data)) ]
+                kkurtosis[Nd, N_methods] = [ data[i].kurtosis for i in range(len(data)) ]
+
+    rmsvals = [0.1, 0.2, 0.5]
+
+    #analysis.noiseAnalysis(data, noiseSamples, fRange, rmsvals, methods, generateNoise, directory, saveFigures, useMP)
     
 
 if kappaAnalysis:

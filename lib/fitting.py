@@ -28,9 +28,8 @@ def FFT_peakFit(fdata, method, peak_index = None):
         return np.array(k)
     
     if peak_index is None: # in case we want to override for testing
-        peak_index = np.argmax(np.abs(fdata))
-    
-    print(peak_index)
+        peak_index = np.argmax(np.abs(fdata[1:-1]))
+
     assert((peak_index>2) and (peak_index < len(fdata)-3)), f'maximum position {peak_index} too close to start or end of data.'
     
     y1, y2, y3 = fdata[peak_index-1:peak_index+2]
@@ -155,6 +154,7 @@ def noisyFit(data, rms = 0.1, Nrepeat = 1000, method = "JacobsenMod", nProc=None
     if hasattr(data, "__len__") and hasattr(data[0],"__len__"):
         # list of lists (or array)
         Nd = len(data)
+        print(Nd)
     else:
         data = [data]
     if hasattr(rms, "__len__"):

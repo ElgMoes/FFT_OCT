@@ -21,8 +21,7 @@ def genPhotons(sine_wave):
 
 #NdataPoints = 700 # roughly number of pixels in raw wavelength-spectrum 
 NdataPoints = 2048 # resampled signal in k-space
-centralFrequency = 7    # based on Pegah et al. (5 µm beads)
-#centralFrequency = 50  # check for different frequency
+centralFrequency = 500    # based on Pegah et al. (5 µm beads)
 noiseSamples = 10
 fRange = helper.inclusiveRange(centralFrequency-0.6,centralFrequency+0.6,N=1001)
 
@@ -37,13 +36,13 @@ data = []
 gauss_data = []
 fdata = []
 for i, sample in enumerate(sample_indices):
-    dataPoints, gaussPoints = genPhotons(olddata[sample])
+    dataPoints = genPhotons(olddata[sample])
     data.append(dataPoints)
-    gauss_data.append(gaussPoints)
-    fdata.append(fft(dataPoints-np.mean(dataPoints)))
+    #gauss_data.append(gaussPoints)
+    fdata.append(np.abs(fft(dataPoints-np.mean(dataPoints))))
     #fdata = fft(olddata)
-    plt.plot(data[i], label=f'f poisson = {param[sample][0]:.2f}')
-    plt.plot(gauss_data[i], label=f'f gauss = {param[sample][0]:.2f}')
+    plt.plot(fdata[i], label=f'f poisson = {param[sample][0]:.2f}')
+    #plt.plot(gauss_data[i], label=f'f gauss = {param[sample][0]:.2f}')
 
 peak_index = np.argmax(np.abs(fdata))
 print(peak_index)
