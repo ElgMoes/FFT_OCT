@@ -26,6 +26,24 @@ import plotter
 import analysis
 
 #%% start script / figure generation
+def print_startup_info():
+    print("="*50)
+    print("Starting analysis with parameters:")
+    print(f"working directory   : {os.getcwd()}")
+    print(f"poisson offset      : {poisson_offset}")
+    print(f"poisson modulation  : {poisson_modulation}")
+    print(f"data points         : {NdataPoints}")
+    print(f"central frequency   : {centralFrequency}")
+    print(f"frequency difference: {frequencyDiv}")
+    print(f"frequencies         : {frequencies}")
+    print(f"save figures         : {saveFigures}")
+    print(f"noise analysis      : {noiseAnalysis}")
+    print(f"generate noise      : {generateNoise}")
+    print(f"kappa analysis      : {kappaAnalysis}")
+    print(f"generate kappa data : {generateKappaData}")
+    print(f"noise samples       : {noiseSamples}")
+    print(f"Use multiprocessing : {useMP}")
+    print("="*50)
 
 if __name__ == "__main__":
     poisson_offset = 500
@@ -37,7 +55,7 @@ if __name__ == "__main__":
 
     # be aware calculation of noise properties can take significant time!
     noiseAnalysis = True
-    generateNoise = True
+    generateNoise = False
 
     # be aware calculation of kappa can take significant time!
     kappaAnalysis = False
@@ -46,19 +64,22 @@ if __name__ == "__main__":
     NdataPoints = 2048 # resampled signal in k-space
     centralFrequency = 7    # based on Pegah et al. (5 µm beads)
     frequencyDiv = 0.6
-    noiseSamples = 10
+    noiseSamples = 100
         
     fRange = helper.inclusiveRange(centralFrequency-frequencyDiv,centralFrequency+frequencyDiv,N=frequencies)
     noiseRange = helper.inclusiveRange(0.02, 0.5, 0.02)
 
     useMP = True
 
+    print_startup_info()
+
     directory = 'presentation'
     if not os.path.exists(directory):
         os.makedirs(directory)
-        print(f"Created new directory \'{directory}\' for storing images\nat {os.getcwd()}")
+        print(f"created new directory \'{directory}\' for storing images at {os.getcwd()}/")
 
     #%%
+    print("plotting DFT vs FFT")
     plotter.plotDFT_FFT(centralFrequency, NdataPoints, directory, saveFigures)
 
     "compare methods"
@@ -66,29 +87,35 @@ if __name__ == "__main__":
     data, param = gen.generateData(N=NdataPoints, f = fRange)
     fdata = fft(data-np.mean(data, axis=1, keepdims=True))
 
+    print("comparing: Gaussian")
     plotter.comparisonGaussian(data, fdata, fRange, directory, saveFigures)
 
     # comparision plots with a  3 methods each
     methods = ["Quadratic", "Barycentric", "Gaussian"]
+    print(f"comparing: {', '.join(methods)}")
     plotter.compareMethods(fdata, fRange, methods, saveFigures, "stdFits", directory)
 
     methods = ["MacLeod"] # , "Candan", "Jains"]
+    print(f"comparing: {', '.join(methods)}")
     plotter.compareMethods(fdata, fRange, methods, saveFigures, "Jains_MacLeod", directory)
         
     methods = ["Jacobsen", "JacobsenMod"]#,"Quinns2nd"]
+    print(f"comparing: {', '.join(methods)}")
     plotter.compareMethods(fdata, fRange, methods, saveFigures, "QuinnJacobsen", directory)
 
-    agenerateNoise = False
     #%%
     if noiseAnalysis:
         import poisson_analysis as panalyse
         methods = ['Quadratic', 'MacLeod', 'Quinns2nd', 'Jacobsen', 'JacobsenMod']
         N_methods = len(methods)
+        N_data = frequencies
 
+        directory = "noise_data"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            print(f"created new directory \'{directory}\' for storing images at {os.getcwd()}/")
 
         if generateNoise:
-            N_data = frequencies
-
             used_parameters = (N_data, methods)
             iterations = frequencies
 
@@ -98,8 +125,12 @@ if __name__ == "__main__":
                 import multiprocessing as mp
                 maxProcess = mp.cpu_count()
                 pool = mp.Pool(processes = min(maxProcess, mp.cpu_count()))
-
-            print("generating noise")
+                if min(maxProcess, mp.cpu_count()) > 1:
+                    print(f"generating noise on {min(maxProcess, mp.cpu_count())} cores")
+                else:
+                    print("generating noise on 1 core")
+            else:
+                print("generating noise on 1 core")
             progbar = tqdm(total = iterations, smoothing = 0.025, unit='job')
                 
             def callbackProgress(*a):
@@ -139,33 +170,35 @@ if __name__ == "__main__":
                 except Exception as e:
                     print(f"{e} at loop nr {Nd} in storing statistics")
 
-            directory = "noise_data"
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-                print(f"Created new directory \'{directory}\' for storing images\nat {os.getcwd()}")
-
             if directory is None:
                 directory = '.'
             for ii, k in enumerate((kmean, kstd, kskewness, kkurtosis)):
                 names = ['kmean', 'kstd', 'kskewness', 'kkurtosis']
                 np.save(f'{directory}/noise_{names[ii]}.dat', k)
+                print(f"saved data to /{directory}/noise_{names[ii]}.dat.npy")
 
             with open(f'{directory}/param.dat', 'wb') as f:
                 pickle.dump(used_parameters, f)
+                print(f"saved data to {directory}/param.dat")
             generateNoise = False # only once per session
         else:
             ## or read data from last run
-            kmean = np.load(f'{directory}/noise_kmean.dat.npy')
-            kstd = np.load(f'{directory}/noise_kstd.dat.npy')
-            kskewness = np.load(f'{directory}/noise_kskewness.dat.npy')
-            kkurtosis = np.load(f'{directory}/noise_kkurtosis.dat.npy')
-            with open(f'{directory}/param.dat', 'rb') as f:
-                used_parameters = pickle.load(f)
+            print("Reading data from last run")
+            try:
+                kmean = np.load(f'{directory}/noise_kmean.dat.npy')
+                kstd = np.load(f'{directory}/noise_kstd.dat.npy')
+                kskewness = np.load(f'{directory}/noise_kskewness.dat.npy')
+                kkurtosis = np.load(f'{directory}/noise_kkurtosis.dat.npy')
+                with open(f'{directory}/param.dat', 'rb') as f:
+                    used_parameters = pickle.load(f)
+            except Exception as e:
+                print(f"Failed opening file -> {e}")
+                exit()
 
         directory = "noise_plots"
         if not os.path.exists(directory):
             os.makedirs(directory)
-            print(f"Created new directory \'{directory}\' for storing images\nat {os.getcwd()}")
+            print(f"created new directory \'{directory}\' for storing images at {os.getcwd()}/")
 
         #plotting
         kmean_bias = np.zeros(shape=(N_data, N_methods))
@@ -185,7 +218,8 @@ if __name__ == "__main__":
 
             fig.legend()
             fig.tight_layout()
-            fig.savefig(f"{directory}/{methods[method]}_{poisson_offset}_{poisson_modulation}.png")
+            fig.savefig(f"{directory}/{methods[method]}_o{poisson_offset}_m{poisson_modulation}.png")
+            print(f"Saved noise analysis of {methods[method]} to /{directory}/{methods[method]}_o{poisson_offset}_m{poisson_modulation}.png")
     
 
     if kappaAnalysis:
@@ -203,3 +237,5 @@ if __name__ == "__main__":
         fdata = fft(data)
 
         analysis.kappaAnalysis(data, noiseSamples, centerF, deltaF, rmsvals, methods, generateKappaData, directory, saveFigures, useMP)
+
+os._exit(0)

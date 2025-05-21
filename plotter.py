@@ -49,6 +49,7 @@ def plotDFT_FFT(centralFrequency, NdataPoints, directory=None, saveFigures=False
 
     if saveFigures:
         plotting.saveFigure(fig, 'fig_DFT_FFT.png', directory)
+        print(f"saved fig_DFT_FFT.png to /{directory}/")
 
 def comparisonGaussian(data, fdata, fRange, directory=None, saveFigures=False):
     """
@@ -84,6 +85,7 @@ def comparisonGaussian(data, fdata, fRange, directory=None, saveFigures=False):
 
     if saveFigures:
         plotting.saveFigure(fig, 'gaussian.png', directory)
+        print(f"saved gaussian.png to /{directory}/")
         
     fig1,ax1=plt.subplots(1)
     ax1.plot(fRange, k[:,0], label="Gaussian fit")
@@ -102,3 +104,4 @@ def compareMethods(fdata, fRange, methods, saveFigures=False, image_name=None, d
     fig,_ = plotting.makeComparisonPlot(fRange, k, methods)
     if saveFigures:
         plotting.saveFigure(fig,f"{image_name}.png", directory)
+        print(f"saved {image_name}.png to /{directory}/")
