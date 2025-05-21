@@ -1,6 +1,8 @@
 # Own ignores
 presentation/
 gauss_poisson/
+noise_data/
+noise_plots/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
