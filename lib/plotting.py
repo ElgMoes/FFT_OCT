@@ -45,8 +45,8 @@ def makeComparisonPlot(fvals, data, methods, title = None):
         avgf = am.mean()
         stdf = am.std()
         mfpos = fvals[np.argmax(am)]
-        print(f'{methods[ii]}: maximum bias is {mf:.6f} at position {mfpos:.2f}; std of bias is {bias.std():.6f}')
-        print(f'     -- <|bias|> is {avgf:.6f}, std(|bias|) is {stdf:.6f}')
+        #print(f'{methods[ii]}: maximum bias is {mf:.6f} at position {mfpos:.2f}; std of bias is {bias.std():.6f}')
+        #print(f'     -- <|bias|> is {avgf:.6f}, std(|bias|) is {stdf:.6f}')
     ax1.set_ylabel('peak position')
     ax1.legend(fontsize=8)
     ax2.set_ylabel('bias')
@@ -312,7 +312,7 @@ def makeNoisePlot(fvals, dataMean, dataStd, param, noiseSamples, rind = None, da
             ax1.set_title(f'{fmethod:s} - (rms={rms:.2f})' if (dataC is None) else f'{fmethod:s}')
             #ax1.legend(['average', 'std'])
             #ax1.legend(['average', '95% confidence interval'])
-            print(f'{method:s} with rms {rms:.2f}: maximum bias is {abs(dM-fvals).max():.5f}; max std of bias is {dS.max():.5f}')
+            #print(f'{method:s} with rms {rms:.2f}: maximum bias is {abs(dM-fvals).max():.5f}; max std of bias is {dS.max():.5f}')
             
             if dataC is not None:
                 ax2 = ax[ii][1]

@@ -7,10 +7,9 @@ import lib.generate as gen
 import lib.fitting as fitting
 
 
-def singleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, poisson_offset, poisson_modulation, pbar):
+def singleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, poisson_offset, poisson_modulation):
     # test (some) methods for noise #TODO
     # initialise arrays to store found data
-    data = []
     found_peak = np.zeros(shape=(N_methods, noiseSamples))
 
     for sample in range(noiseSamples):
@@ -21,8 +20,8 @@ def singleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, poisson_o
             fdata = fft(singleData)
             found_peak[method, sample] = fitting.FFT_peakFit(fdata[0:LD], methods[method])
 
-        pbar.update(N_methods)
-
+    statistics = []
     for method in range(N_methods):
-        data.append(stats.describe(found_peak[method, :]))
-    return data
+        desc = stats.describe(found_peak[method, :])
+        statistics.append((float(desc.mean), float(desc.variance), float(desc.skewness), float(desc.kurtosis)))
+    return statistics
