@@ -15,7 +15,8 @@ import numpy as np
 from scipy.fftpack import fft
 import os
 from tqdm import tqdm
-
+import matplotlib.pyplot as plt
+import pickle
 
 import lib.generate as gen
 import lib.helper_functions as helper
@@ -23,13 +24,12 @@ import lib.helper_functions as helper
 import plotter
 import analysis
 
-
 #%% start script / figure generation
 
 poisson_offset = 500
 poisson_modulation = 50
 
-frequencies = 101
+frequencies = 1001
 
 saveFigures = True
 directory = 'presentation'
@@ -46,7 +46,7 @@ generateKappaData = False
 
 NdataPoints = 2048 # resampled signal in k-space
 centralFrequency = 7    # based on Pegah et al. (5 µm beads)
-noiseSamples = 10
+noiseSamples = 1000
     
 fRange = helper.inclusiveRange(centralFrequency-0.6,centralFrequency+0.6,N=frequencies)
 noiseRange = helper.inclusiveRange(0.02, 0.5, 0.02)
@@ -81,10 +81,14 @@ if noiseAnalysis:
     N_methods = len(methods)
 
     if generateNoise:
-        N_data = 1001
-        for f in tqdm(range(len(fRange))):
-            data[f] = panalyse.singleNoise(N_methods, noiseSamples, NdataPoints, fRange[f], methods, poisson_offset, poisson_modulation)
+        N_data = frequencies
 
+        used_parameters = (N_data, methods)
+        iterations = frequencies * noiseSamples * N_methods
+
+        with tqdm(total = iterations) as pbar:
+            for f in range(len(fRange)):
+                data[f] = panalyse.singleNoise(N_methods, noiseSamples, NdataPoints, fRange[f], methods, poisson_offset, poisson_modulation, pbar)
         # initializing arrays to store statistical values
         # mean and standard deviation
         kmean = np.zeros(shape=(N_data, N_methods))
@@ -94,16 +98,59 @@ if noiseAnalysis:
         kskewness = np.zeros(shape=(N_data, N_methods))
         kkurtosis = np.zeros(shape=(N_data, N_methods))
 
-        for method in range(N_methods):
-            for Nd in range(N_data):
-                kmean[Nd, N_methods] = [ data[method][i].mean for i in range(len(data)) ]
-                kstd[Nd, N_methods] = np.sqrt([ data[i].variance for i in range(len(data)) ])
-                kskewness[Nd, N_methods] = [ data[i].skewness for i in range(len(data)) ]
-                kkurtosis[Nd, N_methods] = [ data[i].kurtosis for i in range(len(data)) ]
 
-    rmsvals = [0.1, 0.2, 0.5]
+        for Nd in range(N_data):
+            data_per_frequency = data[Nd]
+            kmean[Nd, :] = [ data_per_frequency[i].mean for i in range(len(data_per_frequency)) ]
+            kstd[Nd, :] = np.sqrt([ data_per_frequency[i].variance for i in range(len(data_per_frequency)) ])
+            kskewness[Nd, :] = [ data_per_frequency[i].skewness for i in range(len(data_per_frequency)) ]
+            kkurtosis[Nd, :] = [ data_per_frequency[i].kurtosis for i in range(len(data_per_frequency)) ]
 
-    #analysis.noiseAnalysis(data, noiseSamples, fRange, rmsvals, methods, generateNoise, directory, saveFigures, useMP)
+        directory = "noise_data"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
+        if directory is None:
+            directory = '.'
+        for ii, k in enumerate((kmean, kstd, kskewness, kkurtosis)):
+            names = ['kmean', 'kstd', 'kskewness', 'kkurtosis']
+            np.save(f'{directory}/noise_{names[ii]}.dat', k)
+
+        with open(f'{directory}/param.dat', 'wb') as f:
+            pickle.dump(used_parameters, f)
+        generateNoise = False # only once per session
+    else:
+        ## or read data from last run
+        kmean = np.load(f'{directory}/noise_kmean.dat.npy')
+        kstd = np.load(f'{directory}/noise_kstd.dat.npy')
+        kskewness = np.load(f'{directory}/noise_kskewness.dat.npy')
+        kkurtosis = np.load(f'{directory}/noise_kkurtosis.dat.npy')
+        with open(f'{directory}/param.dat', 'rb') as f:
+            used_parameters = pickle.load(f)
+
+    directory = "noise_plots"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    #plotting
+    kmean_bias = np.zeros(shape=(N_data, N_methods))
+    for method in range(len(methods)):
+        fig, (ax1, ax2) = plt.subplots(1, 2)
+        kmean_bias[:, method] = kmean[:, method] - fRange
+        ax1.plot(fRange, kmean_bias[:, method], label=f"Mean bias {methods[method]}")
+        ax1.set_xlabel("Frequency (Hz)")
+        ax1.set_ylabel("Bias")
+        ax1.set_title(f"Bias of {methods[method]} per frequency")
+        ax1.fill_between(fRange, kmean_bias[:, method] - kstd[:, method], kmean_bias[:, method] + kstd[:, method], alpha=0.3)
+
+        ax2.plot(fRange, kskewness[:, method], label=f"Skewness {methods[method]}", color="green")
+        ax2.plot(fRange, kkurtosis[:, method], label=f"Kurtosis {methods[method]}", color="red")
+        ax2.set_xlabel("Frequency (Hz)")
+        ax2.set_title(f"Skewnes and kurtosis of {methods[method]}")
+
+        fig.legend()
+        fig.tight_layout()
+        fig.savefig(f"{directory}/{methods[method]}.png")
     
 
 if kappaAnalysis:
