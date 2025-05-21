@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.fftpack import fft
-from tqdm import tqdm
 import scipy.stats as stats
 
 import lib.generate as gen

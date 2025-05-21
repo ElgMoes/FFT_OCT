@@ -9,43 +9,42 @@ routines for FFT peak fitting;
 contributions by Miriam Voots, Bram Haasnoot, and Saban Caliscan
 example script for arXiv 
 """
+def main():
+    # general use packages & plotting
+    import numpy as np
+    from scipy.fftpack import fft
+    import os
+    from tqdm import tqdm
+    import matplotlib.pyplot as plt
+    import pickle
+    import gc
 
-# general use packages & plotting
-import numpy as np
-from scipy.fftpack import fft
-import os
-from tqdm import tqdm
-import matplotlib.pyplot as plt
-import pickle
-import gc
+    import lib.generate as gen
+    import lib.helper_functions as helper
 
-import lib.generate as gen
-import lib.helper_functions as helper
-
-import plotter
-import analysis
+    import plotter
+    import analysis
 
 #%% start script / figure generation
-def print_startup_info():
-    print("="*50)
-    print("Starting analysis with parameters:")
-    print(f"working directory   : {os.getcwd()}")
-    print(f"poisson offset      : {poisson_offset}")
-    print(f"poisson modulation  : {poisson_modulation}")
-    print(f"data points         : {NdataPoints}")
-    print(f"central frequency   : {centralFrequency}")
-    print(f"frequency difference: {frequencyDiv}")
-    print(f"frequencies         : {frequencies}")
-    print(f"save figures         : {saveFigures}")
-    print(f"noise analysis      : {noiseAnalysis}")
-    print(f"generate noise      : {generateNoise}")
-    print(f"kappa analysis      : {kappaAnalysis}")
-    print(f"generate kappa data : {generateKappaData}")
-    print(f"noise samples       : {noiseSamples}")
-    print(f"Use multiprocessing : {useMP}")
-    print("="*50)
+    def print_startup_info():
+        print("="*50)
+        print("Starting analysis with parameters:")
+        print(f"working directory   : {os.getcwd()}")
+        print(f"poisson offset      : {poisson_offset}")
+        print(f"poisson modulation  : {poisson_modulation}")
+        print(f"data points         : {NdataPoints}")
+        print(f"central frequency   : {centralFrequency}")
+        print(f"frequency difference: {frequencyDiv}")
+        print(f"frequencies         : {frequencies}")
+        print(f"save figures         : {saveFigures}")
+        print(f"noise analysis      : {noiseAnalysis}")
+        print(f"generate noise      : {generateNoise}")
+        print(f"kappa analysis      : {kappaAnalysis}")
+        print(f"generate kappa data : {generateKappaData}")
+        print(f"noise samples       : {noiseSamples}")
+        print(f"Use multiprocessing : {useMP}")
+        print("="*50)
 
-if __name__ == "__main__":
     poisson_offset = 500
     poisson_modulation = 50
 
@@ -55,7 +54,7 @@ if __name__ == "__main__":
 
     # be aware calculation of noise properties can take significant time!
     noiseAnalysis = True
-    generateNoise = False
+    generateNoise = True
 
     # be aware calculation of kappa can take significant time!
     kappaAnalysis = False
@@ -238,4 +237,8 @@ if __name__ == "__main__":
 
         analysis.kappaAnalysis(data, noiseSamples, centerF, deltaF, rmsvals, methods, generateKappaData, directory, saveFigures, useMP)
 
-os._exit(0)
+    os._exit(0)
+
+if __name__ == "__main__":
+    import multiprocessing as mp
+    main()
