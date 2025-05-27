@@ -55,6 +55,8 @@ def main():
     noiseAnalysis = True
     generateNoise = True
 
+    gauss_analysis = True
+
     # be aware calculation of kappa can take significant time!
     kappaAnalysis = False
     generateKappaData = False
@@ -62,7 +64,7 @@ def main():
     NdataPoints = 2048 # resampled signal in k-space
     centralFrequency = 7    # based on Pegah et al. (5 µm beads)
     frequencyDiv = 0.6
-    noiseSamples = 100
+    noiseSamples = 1000
         
     fRange = helper.inclusiveRange(centralFrequency-frequencyDiv,centralFrequency+frequencyDiv,N=frequencies)
     noiseRange = helper.inclusiveRange(0.02, 0.5, 0.02)
@@ -118,7 +120,8 @@ def main():
         
         pmean, pstd, pskewness, pkurtosis = panalyse.poissonAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequencies, fRange, poisson_offset, poisson_modulation, noiseAnalysis, directory, useMP, debug)
 
-        gmean, gstd, gskewness, gkurtosis = ganalyse.gaussAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequencies, fRange, poisson_offset, poisson_modulation, noiseAnalysis, directory, useMP, debug)
+        if gauss_analysis:
+            gmean, gstd, gskewness, gkurtosis = ganalyse.gaussAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequencies, fRange, poisson_offset, poisson_modulation, noiseAnalysis, directory, useMP, debug)
 
         directory = "noise_plots"
         if not os.path.exists(directory):
@@ -129,7 +132,10 @@ def main():
         kmean_bias = np.zeros(shape=(N_data, N_methods))
         gmean_bias = np.zeros(shape=(N_data, N_methods))
         for method in range(len(methods)):
-            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, constrained_layout=True, figsize=(20,20))
+            if gauss_analysis:
+                fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, constrained_layout=True, figsize=(20,20))
+            else:
+                fig, (ax1, ax2) = plt.subplots(1, 2, constrained_layout=True, figsize=(20,10))
             kmean_bias[:, method] = pmean[:, method] - fRange
             gmean_bias[:, method] = gmean[:, method] - fRange
             ax1.plot(fRange, kmean_bias[:, method], label=f"Mean bias {methods[method]}")
@@ -138,25 +144,26 @@ def main():
             ax1.set_title(f"Bias of {methods[method]} per frequency\nPoisson noise")
             ax1.fill_between(fRange, kmean_bias[:, method] - pstd[:, method], kmean_bias[:, method] + pstd[:, method], alpha=0.3)
 
-            ax3.plot(fRange, gmean_bias[:, method])
-            ax3.set_xlabel("Frequency (Hz)")
-            ax3.set_ylabel("Bias")
-            ax3.set_title(f"Bias of {methods[method]} per frequency\nGauss noise")
-            ax3.fill_between(fRange, gmean_bias[:, method] - gstd[:, method], gmean_bias[:, method] + gstd[:, method], alpha=0.3)
-
             ax2.plot(fRange, pkurtosis[:, method], label=f"Kurtosis {methods[method]}", color="red")
             ax2.plot(fRange, pskewness[:, method], label=f"Skewness {methods[method]}", color="green")
             ax2.set_xlabel("Frequency (Hz)")
             ax2.set_title(f"Skewnes and kurtosis of {methods[method]}\nPoisson noise")
 
-            ax4.plot(fRange, gkurtosis[:, method])
-            ax4.plot(fRange, gskewness[:, method])
-            ax4.set_xlabel("Frequency (Hz)")
-            ax4.set_title(f"Skewnes and kurtosis of {methods[method]}\nGauss noise")
+            if gauss_analysis:
+                ax3.plot(fRange, gmean_bias[:, method])
+                ax3.set_xlabel("Frequency (Hz)")
+                ax3.set_ylabel("Bias")
+                ax3.set_title(f"Bias of {methods[method]} per frequency\nGauss noise")
+                ax3.fill_between(fRange, gmean_bias[:, method] - gstd[:, method], gmean_bias[:, method] + gstd[:, method], alpha=0.3)
+
+                ax4.plot(fRange, gkurtosis[:, method], color="red")
+                ax4.plot(fRange, gskewness[:, method], color="green")
+                ax4.set_xlabel("Frequency (Hz)")
+                ax4.set_title(f"Skewnes and kurtosis of {methods[method]}\nGauss noise")
 
             fig.legend()
-            fig.savefig(f"{directory}/{methods[method]}_f{centralFrequency}_o{poisson_offset}_m{poisson_modulation}.png")
-            print(f"Saved noise analysis of {methods[method]} to /{directory}/{methods[method]}_f{centralFrequency}_o{poisson_offset}_m{poisson_modulation}.png")
+            fig.savefig(f"{directory}/{methods[method]}_f{centralFrequency}_s{noiseSamples}_o{poisson_offset}_m{poisson_modulation}.png")
+            print(f"Saved noise analysis of {methods[method]} to /{directory}/{methods[method]}_f{centralFrequency}_s{noiseSamples}_o{poisson_offset}_m{poisson_modulation}.png")
     os._exit(0)
 
 if __name__ == "__main__":
