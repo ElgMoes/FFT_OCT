@@ -37,8 +37,19 @@ def genPhotons(sine_wave, offset, modulation):
 def poissonData(N = 700, f=9, phase=0, offset=500, modulation=50):
     olddata, param = generateData(N=N, f = f, phase=phase)
 
+    data = genPhotons(olddata, offset, modulation)
+
+    return data, param, olddata
+
+# TODO not working
+
+def gaussData(N=700, f=9, phase=0, offset=500, modulation=50,  noise_std=0.35*50):
+    olddata, param = generateData(N=N, f = f, phase=phase)
     data = []
     for i in range(len(olddata)):
-        data.append(genPhotons(olddata[i], offset, modulation))
-
-    return data, param
+        data.append(olddata*modulation+offset)
+    noise = np.random.normal(0, noise_std, size=len(data))
+    noisy_data = data + noise
+    intdata = np.rint(noisy_data).astype(int)
+    
+    return intdata, param

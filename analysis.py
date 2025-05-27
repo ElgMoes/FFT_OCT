@@ -1,187 +1,67 @@
 import numpy as np
-import time as tm
-import pickle
+from scipy.fftpack import fft
+import scipy.stats as stats
+import matplotlib.pyplot as plt
 
+import lib.generate as gen
 import lib.fitting as fitting
-import lib.plotting as plotting
 
-def noiseAnalysis(data, noiseSamples, fRange, rmsvals, methods, generateNoise=True, directory=None, saveFigures=False, useMP=False):
-    """
-    A function to analyse noise and it's inpacts on the methods we use to find the peak
 
-    Parameters
-    ----------
-    data : NDArray[Any] | list
-        The raw data (excluding noise) of the sinusoid
+def poissonSingleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, poisson_offset, poisson_modulation, debug=False):
+    # test (some) methods for noise #TODO
+    # initialise arrays to store found data
+    found_peak = np.zeros(shape=(N_methods, noiseSamples))
 
-    noiseSamples : int
-        Determines how many times we create new data with unique noise
+    for sample in range(noiseSamples):
+        for method in range(N_methods):
+            singleData, _, olddata = gen.poissonData(N=NdataPoints, f = fRange, offset=poisson_offset, modulation=poisson_modulation)
+                                                      
+            LD = int(np.floor(NdataPoints/2))
+            fdata = fft(singleData)
 
-    fRange : list[floating[Any]]
-        The range of frequencies the sinusoid moves over
+            if debug == True:
+                if method == 0 and sample == 0 and fRange < 6.41:
+                    fig, (ax1, ax2)= plt.subplots(1, 2, figsize=(20, 10))
+                    ax1.plot(singleData, label="data with noise")
+                    ax1.plot(olddata*poisson_modulation+poisson_offset, label="pure sine")
+                    ax2.plot(olddata*poisson_modulation+poisson_offset - singleData, label="just noise")
+                    ax1.legend()
+                    ax2.legend()
 
-    rmsvals : 1DArray[Floating[Any]]
-        List of values for amplitudes of noise
+                    oldfdata = fft(olddata*poisson_modulation+poisson_offset)
+                    noisefdata = fft(olddata*poisson_modulation+poisson_offset - singleData)
+                    fig2, ax3 = plt.subplots()
+                    ax3.plot(np.abs(fdata[1:100]), label = "fourier with noise")
+                    ax3.plot(np.abs(oldfdata[1:100]), label = "fourier without noise")
+                    ax3.plot(np.abs(noisefdata[1:100]), label = "fourier of noise")
+                    ax3.legend()
+                    fig.savefig("debug/debug_data.png")
+                    fig2.savefig("debug/debug_fdata.png")
 
-    methods : list[str]
-        List of methods we use
+            found_peak[method, sample] = fitting.FFT_peakFit(fdata[1:LD], methods[method])
 
-    generateNoise : bool
-        Whether to generate new noise (default True)
+    statistics = []
+    for method in range(N_methods):
+        desc = stats.describe(found_peak[method, :])
+        statistics.append((float(desc.mean), float(desc.variance), float(desc.skewness), float(desc.kurtosis)))
+    return statistics
 
-    directory : str
-        The directory you want to save figures to (default None)
+def gaussSingleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, poisson_offset, poisson_modulation, debug=False):
+    # test (some) methods for noise #TODO
+    # initialise arrays to store found data
+    found_peak = np.zeros(shape=(N_methods, noiseSamples))
 
-    saveFigures : bool
-        Whether or not you want to save the figures (default False)
+    for sample in range(noiseSamples):
+        for method in range(N_methods):
+            singleData, _, olddata = gen.gaussData(N=NdataPoints, f = fRange, offset=poisson_offset, modulation=poisson_modulation)
+                                                      
+            LD = int(np.floor(NdataPoints/2))
+            fdata = fft(singleData)
 
-    useMP : bool
-        Use multi-processing
+            found_peak[method, sample] = fitting.FFT_peakFit(fdata[1:LD], methods[method])
 
-    Returns
-    -------
-    It saves figures in a directory of the methods used on a signal with noise for each method over a range of different noise amplitudes
-    """
-    ## generate and save data
-    if generateNoise:
-        start_time = tm.time()
-        print('starting data generation (noise analysis)')
-        kk, paramF = fitting.noisyFit(data, rms = rmsvals, Nrepeat = noiseSamples, method = methods, useMP=useMP)
-        end_time = tm.time()
-        delta = end_time - start_time
-        str_time = f'{(delta%60):.2f} s'
-        if (delta >= 60):
-            delta = int(np.floor(delta/60))
-            str_time = f'{(delta%60):d} m ' + str_time
-            if delta >= 60:
-                delta = int(np.floor(delta/60))
-                str_time = f'{delta:d} h ' + str_time
-        print(f'data generation (noise analysis) finished in {str_time:s}.')
-        km, ks, kskew, kkurt = kk
-        if directory is None:
-            directory = '.'
-        for ii, k in enumerate((km, ks, kskew, kkurt)):
-            np.save(f'{directory}/moment{ii:d}.dat', k)
-        with open(f'{directory}/param.dat', 'wb') as f:
-            pickle.dump(paramF, f)
-        generateNoise = False # only once per session
-    else:
-        ## or read data from last run
-        km = np.load('moment0.dat.npy')
-        ks = np.load('moment1.dat.npy')
-        kskew = np.load('moment2.dat.npy')
-        kkurt = np.load('moment3.dat.npy')
-        with open('param.dat', 'rb') as f:
-            paramF = pickle.load(f)
-        
-    #rind = None # chose automagically (up to 4)
-    rind = [0, 3, 6, 9, 14, 22]
-    fig, ax, param = plotting.makeNoisePlot(fRange, km, ks, paramF, noiseSamples,rind, (kskew, kkurt))
-
-    if saveFigures:
-        for ii in range(len(fig)):
-            if hasattr(fig[ii],'__len__'):
-                for jj in range(len(fig[ii])):
-                    pp = param[ii][jj]
-                    rms = pp[0]
-                    method = pp[1]
-                    plotting.saveFigure(fig[ii][jj], f'noise_{method:s}_{rms:.3f}.png', directory)    
-            else:
-                rms = param[ii][0]
-                method = param[ii][1]
-                plotting.saveFigure(fig[ii], f'noise_{method:s}_{rms:.3f}.png', directory)
-
-    fig, ax = plotting.compareNoisePlots(fRange, km, ks, paramF, biasType="max")
-    ax.set_yscale("log")
-    if saveFigures:
-        plotting.saveFigure(fig, 'noiseComparison.png', directory) 
-    fig, ax = plotting.compareNoisePlots(fRange, km, ks, paramF, biasType="mean")
-    ax.set_yscale("log")
-    if saveFigures:
-        plotting.saveFigure(fig, 'noiseComparisonMean.png', directory)
-
-def kappaAnalysis(data, noiseSamples, centerF, deltaF, rmsvals, methods, generateKappaData=True, directory=None, saveFigures=False, useMP=False):
-    """
-    A function to analyse kappa and it's inpacts on the methods we use to find the peak
-
-    Parameters
-    ----------
-    data : NDArray[Any] | list
-        The raw data (excluding noise) of the sinusoid
-
-    noiseSamples : int
-        Determines how many times we create new data with unique noise
-
-    centerF: list[int]
-        Center frequency
-
-    deltaF : list[float]
-        Bandwidth around center frequency
-
-    rmsvals : 1DArray[Floating[Any]]
-        List of values for amplitudes of noise
-
-    methods : list[str]
-        List of methods we use
-
-    generateNoise : bool
-        Whether to generate new noise (default True)
-
-    directory : str
-        The directory you want to save figures to (default None)
-
-    saveFigures : bool
-        Whether or not you want to save the figures (default False)
-
-    useMP : bool
-        Use multi-processing
-
-    Returns
-    -------
-    It saves figures in a directory of the methods used on a signal with noise for each method over a range of different noise amplitudes over a frequency bandwidth
-    """
-    if generateKappaData:
-        start_time = tm.time()
-        print('starting data generation (kappa analysis)')
-        kk, paramK = fitting.noisyFit(data, rms = rmsvals, Nrepeat = noiseSamples, method = methods, useMP=useMP)
-        end_time = tm.time()
-        delta = end_time - start_time
-        str_time = f'{(delta%60):.2f} s'
-        if (delta >= 60):
-            delta = int(np.floor(delta/60))
-            str_time = f'{(delta%60):d} m ' + str_time
-            if delta >= 60:
-                delta = int(np.floor(delta/60))
-                str_time = f'{delta:d} h ' + str_time
-        print(f'data generation (kappa analysis) finished in {str_time:s}.')
-        km, ks, kskew, kkurt = kk
-        if directory is None:
-            directory = '.'
-        for ii, k in enumerate((km, ks, kskew, kkurt)):
-            np.save(f'{directory}/kappa_moment{ii:d}.dat', k)
-        #paramK.append(centerF)
-        #paramK.append(deltaF)
-        with open(f'{directory}/kappa_param.dat', 'wb') as f:
-            pickle.dump(paramK, f)
-        generateKappaData = False # only once per session
-        
-    else:
-        ## or read data from last run
-        km = np.load('kappa_moment0.dat.npy')
-        ks = np.load('kappa_moment1.dat.npy')
-        kskew = np.load('kappa_moment2.dat.npy')
-        kkurt = np.load('kappa_moment3.dat.npy')
-        with open('kappa_param.dat', 'rb') as f:
-            paramK = pickle.load(f)
-
-    fig, ax, param, cM = plotting.makeKappaPlot(centerF, deltaF, ks, paramK)
-    if saveFigures:
-        for ii in range(len(fig)):
-            if hasattr(fig[ii],'__len__'):
-                for jj in range(len(fig[ii])):
-                    pp = param[ii][jj]
-                    method = pp[1]
-                    plotting.saveFigure(fig[ii][jj], f'kappa_{method:s}.png', directory)    
-            else:
-                method = param[ii][1]
-                plotting.saveFigure(fig[ii], f'kappa_{method:s}.png', directory)
+    statistics = []
+    for method in range(N_methods):
+        desc = stats.describe(found_peak[method, :])
+        statistics.append((float(desc.mean), float(desc.variance), float(desc.skewness), float(desc.kurtosis)))
+    return statistics

@@ -28,7 +28,7 @@ def FFT_peakFit(fdata, method, peak_index = None):
         return np.array(k)
     
     if peak_index is None: # in case we want to override for testing
-        peak_index = np.argmax(np.abs(fdata[1:-1]))
+        peak_index = np.argmax(np.abs(fdata))
 
     assert((peak_index>2) and (peak_index < len(fdata)-3)), f'maximum position {peak_index} too close to start or end of data.'
     
@@ -70,7 +70,7 @@ def FFT_peakFit(fdata, method, peak_index = None):
             print(f"unknown method {method} supplied.")
             d = np.nan
             
-    k = peak_index + d
+    k = peak_index + d + 1 # We add 1 because we feed in fdata[1:LD], shifting it all by 1 
     
     return k
 

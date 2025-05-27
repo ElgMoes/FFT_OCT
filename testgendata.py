@@ -5,8 +5,8 @@ from scipy.fftpack import fft
 import lib.helper_functions as helper
 import lib.generate as gen
 
-offset = 5
-modulation = 1
+offset = 500
+modulation = 50
 print(f"SNR = {np.sqrt(modulation)}")
 
 def genPhotons(sine_wave):
@@ -21,14 +21,14 @@ def genPhotons(sine_wave):
 
 #NdataPoints = 700 # roughly number of pixels in raw wavelength-spectrum 
 NdataPoints = 2048 # resampled signal in k-space
-centralFrequency = 500    # based on Pegah et al. (5 µm beads)
+centralFrequency = 7    # based on Pegah et al. (5 µm beads)
 noiseSamples = 10
 fRange = helper.inclusiveRange(centralFrequency-0.6,centralFrequency+0.6,N=1001)
 
 olddata, param = gen.generateData(N=NdataPoints, f = fRange)
 
 # Let's plot 5 evenly spaced samples out of the 1001 frequencies
-sample_indices = [0]#, 250, 500, 750, 1000]
+sample_indices = [250]#, 250, 500, 750, 1000]
 
 plt.figure(figsize=(12, 6))
 

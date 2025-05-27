@@ -23,7 +23,6 @@ def main():
     import lib.helper_functions as helper
 
     import plotter
-    import analysis
 
 #%% start script / figure generation
     def print_startup_info():
@@ -69,6 +68,7 @@ def main():
     noiseRange = helper.inclusiveRange(0.02, 0.5, 0.02)
 
     useMP = True
+    debug = False
 
     print_startup_info()
 
@@ -104,7 +104,7 @@ def main():
 
     #%%
     if noiseAnalysis:
-        import poisson_analysis as panalyse
+        import analysis as analyse
         methods = ['Quadratic', 'MacLeod', 'Quinns2nd', 'Jacobsen', 'JacobsenMod']
         N_methods = len(methods)
         N_data = frequencies
@@ -128,15 +128,15 @@ def main():
                     print(f"generating noise on {min(maxProcess, mp.cpu_count())} cores")
                 else:
                     print("generating noise on 1 core")
+                progbar = tqdm(total = iterations, smoothing = 0.025, unit='job')
             else:
                 print("generating noise on 1 core")
-            progbar = tqdm(total = iterations, smoothing = 0.025, unit='job')
                 
             def callbackProgress(*a):
                 progbar.update(1)
             
             if pool is not None:
-                res = [ pool.apply_async(panalyse.singleNoise, (N_methods, noiseSamples, NdataPoints, f, methods, poisson_offset, poisson_modulation), callback=callbackProgress) for f in fRange]
+                res = [ pool.apply_async(analyse.gaussSingleNoise, (N_methods, noiseSamples, NdataPoints, f, methods, poisson_offset, poisson_modulation, debug), callback=callbackProgress) for f in fRange]
                 pool.close()
                 pool.join()
                 gc.collect()
@@ -144,11 +144,11 @@ def main():
             if pool is None:
                 with tqdm(total = iterations) as pbar:
                     for f in range(len(fRange)):
-                        data[f] = panalyse.singleNoise(N_methods, noiseSamples, NdataPoints, fRange[f], methods, poisson_offset, poisson_modulation)
-                    pbar.update(1)
+                        data.append(analyse.gaussSingleNoise(N_methods, noiseSamples, NdataPoints, fRange[f], methods, poisson_offset, poisson_modulation, debug))
+                        pbar.update(1)
             else:   
                 data = [res[f].get() for f in range(len(fRange))]
-                
+
             # initializing arrays to store statistical values
             # mean and standard deviation
             kmean = np.zeros(shape=(N_data, N_methods))
@@ -165,7 +165,8 @@ def main():
                     kmean[Nd, :] = [ data_per_frequency[i][0] for i in range(len(data_per_frequency)) ]
                     kstd[Nd, :] = np.sqrt([ data_per_frequency[i][1] for i in range(len(data_per_frequency)) ])
                     kskewness[Nd, :] = [ data_per_frequency[i][2] for i in range(len(data_per_frequency)) ]
-                    kkurtosis[Nd, :] = [ data_per_frequency[i][3] for i in range(len(data_per_frequency)) ]
+                    kkurtosis[Nd, :] = [ data_per_frequency[i][3] for i in 
+                    range(len(data_per_frequency)) ]
                 except Exception as e:
                     print(f"{e} at loop nr {Nd} in storing statistics")
 
@@ -202,7 +203,7 @@ def main():
         #plotting
         kmean_bias = np.zeros(shape=(N_data, N_methods))
         for method in range(len(methods)):
-            fig, (ax1, ax2) = plt.subplots(1, 2)
+            fig, (ax1, ax2) = plt.subplots(1, 2, constrained_layout=True, figsize=(20,10))
             kmean_bias[:, method] = kmean[:, method] - fRange
             ax1.plot(fRange, kmean_bias[:, method], label=f"Mean bias {methods[method]}")
             ax1.set_xlabel("Frequency (Hz)")
@@ -210,33 +211,14 @@ def main():
             ax1.set_title(f"Bias of {methods[method]} per frequency")
             ax1.fill_between(fRange, kmean_bias[:, method] - kstd[:, method], kmean_bias[:, method] + kstd[:, method], alpha=0.3)
 
-            ax2.plot(fRange, kskewness[:, method], label=f"Skewness {methods[method]}", color="green")
             ax2.plot(fRange, kkurtosis[:, method], label=f"Kurtosis {methods[method]}", color="red")
+            ax2.plot(fRange, kskewness[:, method], label=f"Skewness {methods[method]}", color="green")
             ax2.set_xlabel("Frequency (Hz)")
             ax2.set_title(f"Skewnes and kurtosis of {methods[method]}")
 
             fig.legend()
-            fig.tight_layout()
-            fig.savefig(f"{directory}/{methods[method]}_o{poisson_offset}_m{poisson_modulation}.png")
-            print(f"Saved noise analysis of {methods[method]} to /{directory}/{methods[method]}_o{poisson_offset}_m{poisson_modulation}.png")
-    
-
-    if kappaAnalysis:
-        rmsvals = [0.3535]  # S/N ~ 2
-        methods = ['Quadratic', 'MacLeod', 'Quinns2nd', 'Jacobsen', 'JacobsenMod']    
-        
-        #deltaF = [ -0.25, -0,1, 0, 0.1, 0.25 ]
-        Nd = 40
-        deltaF = [(ii/Nd-1/2) for ii in range(Nd+1)]
-        centerF = [7, 50, 100, 150, 200, 250, 300, 350, 400]
-        
-        fvals = [ff + dd for ff in centerF for dd in deltaF]
-        
-        data, param = gen.generateData(N=NdataPoints, f = fvals)
-        fdata = fft(data)
-
-        analysis.kappaAnalysis(data, noiseSamples, centerF, deltaF, rmsvals, methods, generateKappaData, directory, saveFigures, useMP)
-
+            fig.savefig(f"{directory}/{methods[method]}_f{centralFrequency}_o{poisson_offset}_m{poisson_modulation}.png")
+            print(f"Saved noise analysis of {methods[method]} to /{directory}/{methods[method]}_f{centralFrequency}_o{poisson_offset}_m{poisson_modulation}.png")
     os._exit(0)
 
 if __name__ == "__main__":
