@@ -5,7 +5,7 @@ from tqdm import tqdm
 import pickle
 import gc
 
-def gaussAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequencies, fRange, poisson_offset, poisson_modulation, generateNoise, directory, useMP, debug):
+def gaussAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequencies, fRange, poisson_offset, poisson_modulation, generateNoise, gauss_noise_std, directory, useMP, debug):
         if generateNoise:
             used_parameters = (N_data, methods)
             iterations = frequencies
@@ -28,7 +28,7 @@ def gaussAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequen
                 progbar.update(1)
             
             if pool is not None:
-                res = [ pool.apply_async(analyse.gaussSingleNoise, (N_methods, noiseSamples, NdataPoints, f, methods, poisson_offset, poisson_modulation, debug), callback=callbackProgress) for f in fRange]
+                res = [ pool.apply_async(analyse.gaussSingleNoise, (N_methods, noiseSamples, NdataPoints, f, methods, poisson_offset, poisson_modulation, gauss_noise_std, debug), callback=callbackProgress) for f in fRange]
                 pool.close()
                 pool.join()
                 gc.collect()

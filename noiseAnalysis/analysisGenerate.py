@@ -46,14 +46,14 @@ def poissonSingleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, po
         statistics.append((float(desc.mean), float(desc.variance), float(desc.skewness), float(desc.kurtosis)))
     return statistics
 
-def gaussSingleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, poisson_offset, poisson_modulation, debug=False):
+def gaussSingleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, poisson_offset, poisson_modulation, noise_std, debug=False):
     # test (some) methods for noise #TODO
     # initialise arrays to store found data
     found_peak = np.zeros(shape=(N_methods, noiseSamples))
 
     for sample in range(noiseSamples):
         for method in range(N_methods):
-            singleData, _, olddata = gen.gaussData(N=NdataPoints, f = fRange, offset=poisson_offset, modulation=poisson_modulation)
+            singleData, _, olddata = gen.gaussData(N=NdataPoints, f = fRange, offset=poisson_offset, modulation=poisson_modulation, noise_std=noise_std)
                                                       
             LD = int(np.floor(NdataPoints/2))
             fdata = fft(singleData)

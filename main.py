@@ -44,8 +44,10 @@ def main():
         print(f"Use multiprocessing : {useMP}")
         print("="*50)
 
-    poisson_offset = 500
-    poisson_modulation = 50
+    poisson_offset = 50
+    poisson_modulation = 25
+
+    gauss_noise_std = 0.35*poisson_modulation
 
     frequencies = 1001
 
@@ -64,7 +66,7 @@ def main():
     NdataPoints = 2048 # resampled signal in k-space
     centralFrequency = 7    # based on Pegah et al. (5 µm beads)
     frequencyDiv = 0.6
-    noiseSamples = 1000
+    noiseSamples = 100
         
     fRange = helper.inclusiveRange(centralFrequency-frequencyDiv,centralFrequency+frequencyDiv,N=frequencies)
     noiseRange = helper.inclusiveRange(0.02, 0.5, 0.02)
@@ -121,7 +123,7 @@ def main():
         pmean, pstd, pskewness, pkurtosis = panalyse.poissonAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequencies, fRange, poisson_offset, poisson_modulation, noiseAnalysis, directory, useMP, debug)
 
         if gauss_analysis:
-            gmean, gstd, gskewness, gkurtosis = ganalyse.gaussAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequencies, fRange, poisson_offset, poisson_modulation, noiseAnalysis, directory, useMP, debug)
+            gmean, gstd, gskewness, gkurtosis = ganalyse.gaussAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequencies, fRange, poisson_offset, poisson_modulation, noiseAnalysis, gauss_noise_std, directory, useMP, debug)
 
         directory = "noise_plots"
         if not os.path.exists(directory):
