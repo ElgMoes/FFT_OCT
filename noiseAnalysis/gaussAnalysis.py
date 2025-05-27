@@ -1,4 +1,4 @@
-import analysis as analyse
+import noiseAnalysis.analysisGenerate as analyse
 import numpy as np
 import os
 from tqdm import tqdm
