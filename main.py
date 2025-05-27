@@ -35,7 +35,7 @@ def main():
         print(f"central frequency   : {centralFrequency}")
         print(f"frequency difference: {frequencyDiv}")
         print(f"frequencies         : {frequencies}")
-        print(f"save figures         : {saveFigures}")
+        print(f"save figures        : {saveFigures}")
         print(f"noise analysis      : {noiseAnalysis}")
         print(f"generate noise      : {generateNoise}")
         print(f"kappa analysis      : {kappaAnalysis}")
@@ -103,8 +103,10 @@ def main():
     plotter.compareMethods(fdata, fRange, methods, saveFigures, "QuinnJacobsen", directory)
 
     #%%
+    
     if noiseAnalysis:
-        import analysis as analyse
+        import noiseAnalysis.poissonAnalysis as panalyse
+        import noiseAnalysis.gaussAnalysis as ganalyse
         methods = ['Quadratic', 'MacLeod', 'Quinns2nd', 'Jacobsen', 'JacobsenMod']
         N_methods = len(methods)
         N_data = frequencies
@@ -113,87 +115,10 @@ def main():
         if not os.path.exists(directory):
             os.makedirs(directory)
             print(f"created new directory \'{directory}\' for storing images at {os.getcwd()}/")
+        
+        pmean, pstd, pskewness, pkurtosis = panalyse.poissonAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequencies, fRange, poisson_offset, poisson_modulation, noiseAnalysis, directory, useMP, debug)
 
-        if generateNoise:
-            used_parameters = (N_data, methods)
-            iterations = frequencies
-
-            pool = None
-            data = []
-            if useMP and (iterations > 100):
-                import multiprocessing as mp
-                maxProcess = mp.cpu_count()
-                pool = mp.Pool(processes = min(maxProcess, mp.cpu_count()))
-                if min(maxProcess, mp.cpu_count()) > 1:
-                    print(f"generating noise on {min(maxProcess, mp.cpu_count())} cores")
-                else:
-                    print("generating noise on 1 core")
-                progbar = tqdm(total = iterations, smoothing = 0.025, unit='job')
-            else:
-                print("generating noise on 1 core")
-                
-            def callbackProgress(*a):
-                progbar.update(1)
-            
-            if pool is not None:
-                res = [ pool.apply_async(analyse.gaussSingleNoise, (N_methods, noiseSamples, NdataPoints, f, methods, poisson_offset, poisson_modulation, debug), callback=callbackProgress) for f in fRange]
-                pool.close()
-                pool.join()
-                gc.collect()
-
-            if pool is None:
-                with tqdm(total = iterations) as pbar:
-                    for f in range(len(fRange)):
-                        data.append(analyse.gaussSingleNoise(N_methods, noiseSamples, NdataPoints, fRange[f], methods, poisson_offset, poisson_modulation, debug))
-                        pbar.update(1)
-            else:   
-                data = [res[f].get() for f in range(len(fRange))]
-
-            # initializing arrays to store statistical values
-            # mean and standard deviation
-            kmean = np.zeros(shape=(N_data, N_methods))
-            kstd = np.zeros(shape=(N_data, N_methods))
-            
-            # Skewness and kurtosis
-            kskewness = np.zeros(shape=(N_data, N_methods))
-            kkurtosis = np.zeros(shape=(N_data, N_methods))
-
-
-            for Nd in range(N_data):
-                try:
-                    data_per_frequency = data[Nd]
-                    kmean[Nd, :] = [ data_per_frequency[i][0] for i in range(len(data_per_frequency)) ]
-                    kstd[Nd, :] = np.sqrt([ data_per_frequency[i][1] for i in range(len(data_per_frequency)) ])
-                    kskewness[Nd, :] = [ data_per_frequency[i][2] for i in range(len(data_per_frequency)) ]
-                    kkurtosis[Nd, :] = [ data_per_frequency[i][3] for i in 
-                    range(len(data_per_frequency)) ]
-                except Exception as e:
-                    print(f"{e} at loop nr {Nd} in storing statistics")
-
-            if directory is None:
-                directory = '.'
-            for ii, k in enumerate((kmean, kstd, kskewness, kkurtosis)):
-                names = ['kmean', 'kstd', 'kskewness', 'kkurtosis']
-                np.save(f'{directory}/noise_{names[ii]}.dat', k)
-                print(f"saved data to /{directory}/noise_{names[ii]}.dat.npy")
-
-            with open(f'{directory}/param.dat', 'wb') as f:
-                pickle.dump(used_parameters, f)
-                print(f"saved data to {directory}/param.dat")
-            generateNoise = False # only once per session
-        else:
-            ## or read data from last run
-            print("Reading data from last run")
-            try:
-                kmean = np.load(f'{directory}/noise_kmean.dat.npy')
-                kstd = np.load(f'{directory}/noise_kstd.dat.npy')
-                kskewness = np.load(f'{directory}/noise_kskewness.dat.npy')
-                kkurtosis = np.load(f'{directory}/noise_kkurtosis.dat.npy')
-                with open(f'{directory}/param.dat', 'rb') as f:
-                    used_parameters = pickle.load(f)
-            except Exception as e:
-                print(f"Failed opening file -> {e}")
-                exit()
+        gmean, gstd, gskewness, gkurtosis = ganalyse.gaussAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequencies, fRange, poisson_offset, poisson_modulation, noiseAnalysis, directory, useMP, debug)
 
         directory = "noise_plots"
         if not os.path.exists(directory):
@@ -202,19 +127,32 @@ def main():
 
         #plotting
         kmean_bias = np.zeros(shape=(N_data, N_methods))
+        gmean_bias = np.zeros(shape=(N_data, N_methods))
         for method in range(len(methods)):
-            fig, (ax1, ax2) = plt.subplots(1, 2, constrained_layout=True, figsize=(20,10))
-            kmean_bias[:, method] = kmean[:, method] - fRange
+            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, constrained_layout=True, figsize=(20,20))
+            kmean_bias[:, method] = pmean[:, method] - fRange
+            gmean_bias[:, method] = gmean[:, method] - fRange
             ax1.plot(fRange, kmean_bias[:, method], label=f"Mean bias {methods[method]}")
             ax1.set_xlabel("Frequency (Hz)")
             ax1.set_ylabel("Bias")
-            ax1.set_title(f"Bias of {methods[method]} per frequency")
-            ax1.fill_between(fRange, kmean_bias[:, method] - kstd[:, method], kmean_bias[:, method] + kstd[:, method], alpha=0.3)
+            ax1.set_title(f"Bias of {methods[method]} per frequency\nPoisson noise")
+            ax1.fill_between(fRange, kmean_bias[:, method] - pstd[:, method], kmean_bias[:, method] + pstd[:, method], alpha=0.3)
 
-            ax2.plot(fRange, kkurtosis[:, method], label=f"Kurtosis {methods[method]}", color="red")
-            ax2.plot(fRange, kskewness[:, method], label=f"Skewness {methods[method]}", color="green")
+            ax3.plot(fRange, gmean_bias[:, method])
+            ax3.set_xlabel("Frequency (Hz)")
+            ax3.set_ylabel("Bias")
+            ax3.set_title(f"Bias of {methods[method]} per frequency\nGauss noise")
+            ax3.fill_between(fRange, gmean_bias[:, method] - gstd[:, method], gmean_bias[:, method] + gstd[:, method], alpha=0.3)
+
+            ax2.plot(fRange, pkurtosis[:, method], label=f"Kurtosis {methods[method]}", color="red")
+            ax2.plot(fRange, pskewness[:, method], label=f"Skewness {methods[method]}", color="green")
             ax2.set_xlabel("Frequency (Hz)")
-            ax2.set_title(f"Skewnes and kurtosis of {methods[method]}")
+            ax2.set_title(f"Skewnes and kurtosis of {methods[method]}\nPoisson noise")
+
+            ax4.plot(fRange, gkurtosis[:, method])
+            ax4.plot(fRange, gskewness[:, method])
+            ax4.set_xlabel("Frequency (Hz)")
+            ax4.set_title(f"Skewnes and kurtosis of {methods[method]}\nGauss noise")
 
             fig.legend()
             fig.savefig(f"{directory}/{methods[method]}_f{centralFrequency}_o{poisson_offset}_m{poisson_modulation}.png")
