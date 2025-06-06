@@ -19,8 +19,16 @@ def poissonSingleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, po
             LD = int(np.floor(NdataPoints/2))
             fdata = fft(singleData)
 
+            signal = olddata*poisson_modulation
+            noise = olddata*poisson_modulation+poisson_offset - singleData
+            signal_power = np.mean(signal**2)
+            noise_power = np.mean(noise**2)
+
+            snr_linear = signal_power / noise_power
+            snr_db = 10 * np.log10(snr_linear)
+
             if debug == True:
-                if method == 0 and sample == 0 and fRange < 6.41:
+                if method == 0 and sample == 0 and fRange < 7.51 and fRange > 7.49:
                     fig, (ax1, ax2)= plt.subplots(1, 2, figsize=(20, 10))
                     ax1.plot(singleData, label="data with noise")
                     ax1.plot(olddata*poisson_modulation+poisson_offset, label="pure sine")
@@ -31,9 +39,9 @@ def poissonSingleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, po
                     oldfdata = fft(olddata*poisson_modulation+poisson_offset)
                     noisefdata = fft(olddata*poisson_modulation+poisson_offset - singleData)
                     fig2, ax3 = plt.subplots()
-                    ax3.plot(np.abs(fdata[1:100]), label = "fourier with noise")
-                    ax3.plot(np.abs(oldfdata[1:100]), label = "fourier without noise")
-                    ax3.plot(np.abs(noisefdata[1:100]), label = "fourier of noise")
+                    ax3.plot(np.abs(fdata[1:25])/np.max(fdata[4:10]), label = "fourier with noise")
+                    #ax3.plot(np.abs(oldfdata[1:100]), label = "fourier without noise")
+                    #ax3.plot(np.abs(noisefdata[1:100]), label = "fourier of noise")
                     ax3.legend()
                     fig.savefig("debug/debug_data.png")
                     fig2.savefig("debug/debug_fdata.png")
@@ -44,7 +52,7 @@ def poissonSingleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, po
     for method in range(N_methods):
         desc = stats.describe(found_peak[method, :])
         statistics.append((float(desc.mean), float(desc.variance), float(desc.skewness), float(desc.kurtosis)))
-    return statistics
+    return statistics, snr_db
 
 def gaussSingleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, poisson_offset, poisson_modulation, noise_std, debug=False):
     # test (some) methods for noise #TODO

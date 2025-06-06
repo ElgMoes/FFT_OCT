@@ -36,10 +36,14 @@ def poissonAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequ
             if pool is None:
                 with tqdm(total = iterations) as pbar:
                     for f in range(len(fRange)):
-                        data.append(analyse.poissonSingleNoise(N_methods, noiseSamples, NdataPoints, fRange[f], methods, poisson_offset, poisson_modulation, debug))
+                        full_data.append(analyse.poissonSingleNoise(N_methods, noiseSamples, NdataPoints, fRange[f], methods, poisson_offset, poisson_modulation, debug))
                         pbar.update(1)
             else:   
-                data = [res[f].get() for f in range(len(fRange))]
+                full_data = [res[f].get() for f in range(len(fRange))]
+
+            data, snr_list = zip(*full_data)
+
+            SNR = np.mean(snr_list)
 
             # initializing arrays to store statistical values
             # mean and standard deviation
@@ -87,4 +91,4 @@ def poissonAnalysis(NdataPoints, noiseSamples, N_data, methods, N_methods, frequ
                 print(f"Failed opening file -> {e}")
                 exit()
 
-        return kmean, kstd, kskewness, kkurtosis
+        return kmean, kstd, kskewness, kkurtosis, SNR

@@ -101,7 +101,7 @@ def comparisonGaussian(data, fdata, fRange, directory=None, saveFigures=False):
 
 def compareMethods(fdata, fRange, methods, saveFigures=False, image_name=None, directory=None):
     k = np.array(fitting.FFT_peakFit(fdata, methods))
-    fig,_ = plotting.makeComparisonPlot(fRange, k, methods)
+    fig,_ = plotting.makeComparisonPlot(fRange, k - 1, methods) # -1 to compensate slice
     if saveFigures:
         plotting.saveFigure(fig,f"{image_name}.png", directory)
         print(f"saved {image_name}.png to /{directory}/")
