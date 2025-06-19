@@ -51,57 +51,10 @@ def plotDFT_FFT(centralFrequency, NdataPoints, directory=None, saveFigures=False
         plotting.saveFigure(fig, 'fig_DFT_FFT.png', directory)
         print(f"saved fig_DFT_FFT.png to /{directory}/")
 
-def comparisonGaussian(data, fdata, fRange, directory=None, saveFigures=False):
-    """
-    Plots a comparison between the found peak and actual peak
-
-    Parameters
-    ----------
-    data : NDArray[Any] | list
-        Datapoints
-
-    fdata : Any
-        Fourier transform of data
-
-    fRange : list[floating[Any]]
-        Range of frequencies
-
-    directory : str
-        Directory to save the plot to (default None)
-
-    saveFigures : bool
-        Whether or not to save figures in the directory (default False)
-
-    Returns
-    -------
-    Currently nothing #TODO
-    """
-    plotting.makeDataPlot(data = data[::100], fdata = fdata[::100], fmt='-')
-
-    Ngauss = 5
-    k = np.array(fitting.Gauss_fit(fdata, N=Ngauss))
-
-    fig, ax = plotting.makeComparisonPlot(fRange, k[:,1], "Gaussian")
-
-    if saveFigures:
-        plotting.saveFigure(fig, 'gaussian.png', directory)
-        print(f"saved gaussian.png to /{directory}/")
-        
-    fig1,ax1=plt.subplots(1)
-    ax1.plot(fRange, k[:,0], label="Gaussian fit")
-    ax1.plot(fRange, k[:,3], label=f'RMS FFT (N={Ngauss})')
-    ax1.set_xlabel('input frequency ($\\Delta f$)')
-    ax1.set_ylabel('amplitude of component (AU)')
-    ax1.legend()
-
-    fig2,ax2=plt.subplots(1)
-    ax2.plot(fRange, k[:,2], label="fit width")
-    ax2.set_xlabel('input frequency ($\\Delta f$)')
-    ax2.set_ylabel('width of Gaussian $\\sigma$')
-
-def compareMethods(fdata, fRange, methods, saveFigures=False, image_name=None, directory=None):
+def compareMethods(fdata, fRange, methods, saveFigures=False, image_name=None, directory=None, method_names=[], colors=[]):
     k = np.array(fitting.FFT_peakFit(fdata, methods))
-    fig,_ = plotting.makeComparisonPlot(fRange, k - 1, methods) # -1 to compensate slice
+    fig, _ = plotting.makeComparisonPlot(fRange, k - 1, methods, method_names=method_names, colors=colors) # -1 to compensate slice
     if saveFigures:
         plotting.saveFigure(fig,f"{image_name}.png", directory)
+        plt.close()
         print(f"saved {image_name}.png to /{directory}/")

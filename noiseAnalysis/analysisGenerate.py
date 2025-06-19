@@ -45,6 +45,14 @@ def poissonSingleNoise(N_methods, noiseSamples, NdataPoints, fRange, methods, po
                     ax3.legend()
                     fig.savefig("debug/debug_data.png")
                     fig2.savefig("debug/debug_fdata.png")
+            if method == 0 and fRange < 7.51 and fRange > 7.49:
+                if poisson_modulation < 51 and poisson_modulation > 50:
+                    fig1, ax1= plt.subplots(1, 1, figsize=(16, 9))
+                    ax1.plot(singleData[0:769], label="Data with noise", color="#38B6FF")
+                    ax1.set_xlabel("Time (ms)", fontsize=20)
+                    ax1.set_ylabel("Photon (count)", fontsize=20)
+                    plt.rcParams.update({'font.size': 20})
+                    fig1.savefig("poster/datavisual.png")
 
             found_peak[method, sample] = fitting.FFT_peakFit(fdata[1:LD], methods[method])
 

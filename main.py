@@ -40,16 +40,12 @@ def main(modulation, offset, methods):
         print(f"save figures        : {saveFigures}")
         print(f"noise analysis      : {noiseAnalysis}")
         print(f"generate noise      : {generateNoise}")
-        print(f"kappa analysis      : {kappaAnalysis}")
-        print(f"generate kappa data : {generateKappaData}")
         print(f"noise samples       : {noiseSamples}")
         print(f"Use multiprocessing : {useMP}")
         print("="*50)
 
     poisson_offset = offset
     poisson_modulation = modulation
-
-    gauss_noise_std = 0.35*poisson_modulation
 
     frequencies = 1001
 
@@ -59,36 +55,26 @@ def main(modulation, offset, methods):
     noiseAnalysis = True
     generateNoise = True
 
-    gauss_analysis = False
-
-    # be aware calculation of kappa can take significant time!
-    kappaAnalysis = False
-    generateKappaData = False
-
     NdataPoints = 2048 # resampled signal in k-space
     centralFrequency = 7    # based on Pegah et al. (5 µm beads)
     frequencyDiv = 0.6
-    noiseSamples = 10 # 2500 for 1% error in std, 163 for 5%, 50 for 10%, 1000 gives 1.7%
+    noiseSamples = 2500 # 2500 for 1% error in std, 163 for 5%, 50 for 10%, 1000 gives 1.7%
 
-    compare_methods = False
+    compare_methods = True
         
     fRange = helper.inclusiveRange(centralFrequency-frequencyDiv,centralFrequency+frequencyDiv,N=frequencies)
-    noiseRange = helper.inclusiveRange(0.02, 0.5, 0.02)
 
     useMP = True
-    debug = True
+    debug = False
     SNRanalysis = True
-
+    forPoster = True
     print_startup_info()
 
-    directory = 'presentation'
+    #%%
+    directory = 'poster'
     if not os.path.exists(directory):
         os.makedirs(directory)
         print(f"created new directory \'{directory}\' for storing images at {os.getcwd()}/")
-
-    #%%
-    print("plotting DFT vs FFT")
-    plotter.plotDFT_FFT(centralFrequency, NdataPoints, directory, saveFigures)
 
     if compare_methods:
         "compare methods"
@@ -96,27 +82,16 @@ def main(modulation, offset, methods):
         data, param = gen.generateData(N=NdataPoints, f = fRange)
         fdata = fft(data-np.mean(data, axis=1, keepdims=True))
 
-        print("comparing: Gaussian")
-        plotter.comparisonGaussian(data, fdata, fRange, directory, saveFigures)
-
-        # comparision plots with a  3 methods each
-        methods = ["Quadratic", "Barycentric", "Gaussian"]
+        methods = ["MacLeod", "JacobsenMod", "Quinns2nd"]
+        method_names = ["MacLeod", "Jacobsen modified", r"Quinns $2^{nd}$"]
+        colors = ["#38B6FF", "#FF8100", "#00EE00"]
         print(f"comparing: {', '.join(methods)}")
-        plotter.compareMethods(fdata, fRange, methods, saveFigures, "stdFits", directory)
-
-        methods = ["MacLeod"] # , "Candan", "Jains"]
-        print(f"comparing: {', '.join(methods)}")
-        plotter.compareMethods(fdata, fRange, methods, saveFigures, "Jains_MacLeod", directory)
-            
-        methods = ["Jacobsen", "JacobsenMod"]#,"Quinns2nd"]
-        print(f"comparing: {', '.join(methods)}")
-        plotter.compareMethods(fdata, fRange, methods, saveFigures, "QuinnJacobsen", directory)
+        plotter.compareMethods(fdata, fRange, methods, saveFigures, "bias-comparison", directory, method_names=method_names, colors=colors)
 
     #%%
     
     if noiseAnalysis:
         import noiseAnalysis.poissonAnalysis as panalyse
-        import noiseAnalysis.gaussAnalysis as ganalyse
         N_methods = len(methods)
         N_data = frequencies
 
@@ -135,6 +110,27 @@ def main(modulation, offset, methods):
         #plotting
         kmean_bias = np.zeros(shape=(N_data, N_methods))
         if SNRanalysis:
+            if forPoster:
+                idx = (np.abs(np.array(modulations) - 50)).argmin()
+                if modulation == modulations[idx]:
+                    fig, ax = plt.subplots(1, 1, figsize=(16, 9))
+                    kmean_bias[:, 0] = pmean[:, 0] - fRange
+                    ax.plot(fRange, kmean_bias[:, 0], label=f"Mean bias {methods[0]}", color="#38B6FF")
+                    ax.set_xlabel("Frequency (Hz)", fontsize=20)
+                    ax.set_ylabel("Bias (Hz)", fontsize=20)
+                    plt.rcParams.update({'font.size': 20})
+                    ax.fill_between(fRange, kmean_bias[:, 0] - pstd[:, 0], kmean_bias[:, 0] + pstd[:, 0], alpha=0.25, color="#38B6FF", label="Std bias MacLeod")
+                    ax.text(
+                        0.01, 0.98, f"SNR = {SNR:.2f} dB",
+                        transform=ax.transAxes,  # relative coordinates (0 to 1)
+                        fontsize=12,
+                        verticalalignment='top',
+                        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+                    )
+                    ax.legend()
+                    fig.savefig(f"poster/example_{methods[0]}.png")
+                    plt.close()
+
             rms_pstd = np.zeros(shape=(len(methods)))
             var_pstd = np.zeros(shape=(len(methods)))
             for method in range(len(methods)):
@@ -144,7 +140,7 @@ def main(modulation, offset, methods):
 
         else:
             for method in range(len(methods)):
-                fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, constrained_layout=True, figsize=(20,20))
+                fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(20,20))
                 kmean_bias[:, method] = pmean[:, method] - fRange
                 ax1.plot(fRange, kmean_bias[:, method], label=f"Mean bias {methods[method]}")
                 ax1.set_xlabel("Frequency (Hz)")
@@ -163,7 +159,7 @@ def main(modulation, offset, methods):
                 ax2.plot(fRange, pkurtosis[:, method], label=f"Kurtosis {methods[method]}", color="red")
                 ax2.plot(fRange, pskewness[:, method], label=f"Skewness {methods[method]}", color="green")
                 ax2.set_xlabel("Frequency (Hz)")
-                ax2.set_title(f"Skewnes and kurtosis of {methods[method]}\nPoisson noise")
+                ax2.set_title(f"Skewnes and kurtosis of {methods[method]}")
 
                 mean_pstd = np.mean(pstd[:, method])
                 rms_pstd = np.sqrt(np.mean(pstd[:, method]**2))
@@ -179,6 +175,7 @@ def main(modulation, offset, methods):
 
                 fig.legend()
                 fig.savefig(f"{directory}/{methods[method]}_f{centralFrequency}_s{noiseSamples}_o{poisson_offset}_m{poisson_modulation}.png")
+                plt.close()
                 print(f"Saved noise analysis of {methods[method]} to /{directory}/{methods[method]}_f{centralFrequency}_s{noiseSamples}_o{poisson_offset}_m{poisson_modulation}.png")
 
 if __name__ == "__main__":
@@ -186,11 +183,10 @@ if __name__ == "__main__":
     import numpy as np
     import os
     import matplotlib.pyplot as plt
-    from matplotlib.ticker import ScalarFormatter
     
     methods = ['macleod', 'jacobsenmod', 'quinns2nd']
     offset = 500
-    SNR = np.linspace(-10, 20, 6)
+    SNR = np.linspace(-10, 20, 51)
     modulations = []
     rms_per_snr = []
     var_per_snr = []
@@ -203,21 +199,19 @@ if __name__ == "__main__":
     rms_per_snr_T = np.array(rms_per_snr).T
     var_per_snr_T = np.array(var_per_snr).T
 
-    fig, ax1 = plt.subplots(1, 1, constrained_layout=True, figsize=(10,10), facecolor="#737373")
+    fig, ax1 = plt.subplots(1, 1, figsize=(16,9), facecolor="#FFFFFF")
+    method_names = ["MacLeod", "Jacobsen modified", r"Quinns $2^{nd}$"]
+    colors = ["#38B6FF", "#FF8100", "#00EE00"]
     for i in range(len(rms_per_snr_T)):
-        ax1.plot(SNR, rms_per_snr_T[i], label=f"{methods[i]}", linewidth=2.5)
-    ax1.set_xlabel("SNR in dB", fontsize=20)
-    ax1.set_ylabel("rms", fontsize=20)
+        ax1.plot(SNR, rms_per_snr_T[i], label=f"{method_names[i]}", linewidth=5, color=colors[i])
+    ax1.set_xlabel("SNR (dB)", fontsize=20)
+    ax1.set_ylabel("RMS", fontsize=20)
     plt.rcParams.update({'font.size': 20})
-    ax1.set_facecolor("#737373")
-    yticks = 10.0 ** np.arange(-3, -0.75, 0.25)
-    ax1.set_yticks(yticks)
-    formatter = ScalarFormatter()
-    formatter.set_scientific(True)
-    formatter.set_powerlimits((-3, 3))
-    ax1.get_yaxis().set_major_formatter(formatter)
+    ax1.set_facecolor("#FFFFFF")
+    ax1.set_ylim(1e-3, 1e-1)
     ax1.grid(True)
     ax1.legend()
     ax1.set_yscale('log')
-    fig.savefig("snr/rmsplot.png")
+    fig.savefig("poster/rmsplot.png")
+    plt.close()
     os._exit(0)
