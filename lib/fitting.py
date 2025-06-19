@@ -1,9 +1,6 @@
 import math
 import numpy as np
 from scipy.optimize import curve_fit
-import tqdm
-from scipy.fftpack import fft
-import scipy.stats as stats
 
 import lib.fitting_routines as fr
 
@@ -29,7 +26,7 @@ def FFT_peakFit(fdata, method, peak_index = None):
     
     if peak_index is None: # in case we want to override for testing
         peak_index = np.argmax(np.abs(fdata))
-    
+
     assert((peak_index>2) and (peak_index < len(fdata)-3)), f'maximum position {peak_index} too close to start or end of data.'
     
     y1, y2, y3 = fdata[peak_index-1:peak_index+2]
@@ -70,7 +67,7 @@ def FFT_peakFit(fdata, method, peak_index = None):
             print(f"unknown method {method} supplied.")
             d = np.nan
             
-    k = peak_index + d
+    k = peak_index + d + 1 # We add 1 because we feed in fdata[1:LD], shifting it all by 1 
     
     return k
 
@@ -99,106 +96,3 @@ def Gauss_fit(fdata, N = 7, peak_index=None):
     
     popt, pcov = curve_fit(gauss,x,y,p0=[y.max(),peak_index,1], maxfev=20000)
     return np.append(popt, np.sqrt((y**2).sum()))
-
-def singlenoisyFit(data, rms = 0.1, Nrepeat = 1000, method = "JacobsenMod"):
-    """ singlenoisyFit(data, rms = 0.1, Nrepeat = 1000, method = "JacobsenMod"):
-        noise fit of a single data set with a single rms
-        noise is defined by rms (normal distributed)
-        Nrepeat is the number of noisy datasets generated from data and rms
-        method can be a string, or a list of strings.
-        
-        this fit has been moved into a separate function so it can be more
-        easily paralellised (with package multiprossing)
-    """
-    if type(method) is not str and hasattr(method, "__len__"):
-        Nm = len(method)  
-    else:
-        method = [method]
-        Nm = 1
-    def offsetEst(fft_data, d = 0.75):
-        Nd = len(fft_data)
-        
-        ind = slice(int(d*0.5*Nd), int(0.5*Nd))
-        return fft_data[ind].mean()
-    
-    # generate data with random noise, calculate fft
-    #dm = [data + np.random.normal(0, rms, size=(len(data),)) for ii in range(Nrepeat)]
-    #fdm = fft(dm)
-    
-    kk = []
-    k = np.zeros((Nrepeat, Nm))
-    lD = len(data)
-    Nf = int(np.floor(lD/2))
-    #lD = len(data)
-    for dd in range(Nrepeat):
-       fdm = fft(data + np.random.normal(0,rms,size=(lD,)))[0:Nf]
-       for mm in range(Nm):    # loop over different methods
-            k[dd,mm] = FFT_peakFit(fdm, method[mm])
-    for mm in range(Nm):
-        kk.append(stats.describe(k[:,mm]))
-    
-    return kk
-
-def noisyFit(data, rms = 0.1, Nrepeat = 1000, method = "JacobsenMod", nProc=None, useMP=False):
-    """ generate and fit noisy data
-    this is a wrapper that calls singleNoisyFit and allows to fit several
-    rms and methods on the same data set.
-    if possible and selected, it will parallelise the work load.
-    """
-
-    if useMP:
-        import multiprocessing as mp
-    
-    Nd = 1; Nr = 1; Nm = 1;
-    
-    if hasattr(data, "__len__") and hasattr(data[0],"__len__"):
-        # list of lists (or array)
-        Nd = len(data)
-    else:
-        data = [data]
-    if hasattr(rms, "__len__"):
-        Nr = len(rms)
-    else:
-        rms = [rms]
-    if type(method) is not str and hasattr(method, "__len__"):
-        Nm = len(method)  
-    else:
-        method = [method]
-        
-    km = np.zeros((Nd, Nr, Nm))
-    kstd = np.zeros((Nd, Nr, Nm))
-    
-    kskew = np.zeros((Nd, Nr, Nm));
-    kkurt = np.zeros((Nd, Nr, Nm));
-    
-    pool = None
-    if useMP and (Nd*Nr*Nm > 100):  # minimum complexity requirement
-        #memPinst = 8*Nrepeat*len(data[0])
-        #maxProcess = int(np.floor(32e9/memPinst))
-        maxProcess = mp.cpu_count()
-        pool = mp.Pool(processes = min(maxProcess, mp.cpu_count()-2))
-        
-    print("generating noise")
-    progbar = tqdm.tqdm(total = Nr*Nd, smoothing = 0.025, unit='job')
-    
-    def callbackProgress(*a):
-        progbar.update()
-        
-    if pool is not None:
-        res = [[ pool.apply_async(singlenoisyFit, (dd, rr, Nrepeat, method), callback=callbackProgress) for rr in rms] for dd in data]
-        pool.close()
-        pool.join()
-        
-    for dd in range(Nd):    # different data sets (base sine)
-        for rr in range(Nr):    # different noise level
-            if pool is None:    # not parallel -> calculate
-                kk = singlenoisyFit(data[dd], rms[rr], Nrepeat, method)
-            else:               # parallel -> get results
-                kk = res[dd][rr].get()
-            km[dd,rr,:] = [ kk[ii].mean for ii in range(len(kk)) ]
-            kstd[dd,rr,:] = np.sqrt([ kk[ii].variance for ii in range(len(kk)) ])
-            kskew[dd,rr,:] = [ kk[ii].skewness for ii in range(len(kk)) ]
-            kkurt[dd,rr,:] = [ kk[ii].kurtosis for ii in range(len(kk)) ]
-            progbar.update()
-            
-    return (km, kstd, kskew, kkurt), (Nd, rms, method)
