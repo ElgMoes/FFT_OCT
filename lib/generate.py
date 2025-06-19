@@ -1,11 +1,6 @@
 import numpy as np
 
 def generateData(N = 700, f = 9, phase = 0):
-    """ create a data set (pure sine) of length N, frequency f, 
-    phase, and optionally noise (rms, gaussian noise)
-    f, phase, and noise may be lists, in which case a list of data sets 
-    is returned; 
-    """
     data = []
     param = []
   
